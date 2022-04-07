@@ -1,0 +1,130 @@
+﻿// remove_comments_simple.cpp
+/// Найти в си-строке str символ ch (аналог стандартной функции strchr).
+/// Возвращает указатель на найденный символ или нулевой указатель, если символа в строке нет.
+char* find_char(char *str, char ch)
+{
+  for (; *str != '\0'; ++str)
+  {
+    if (*str == ch)
+      return str;
+  }
+  return nullptr;
+}
+
+/// Затереть нулём первый символ, открывающий комментарий, закончив таким образом на нём си-строку.
+void remove_comment(char *line, char comment_mark)
+{
+  if (auto pos = find_char(line, comment_mark))
+    *pos = '\0';
+}
+
+/// Удалить однострочные комментарии из текста.
+void remove_comments(char *text[], char comment_mark)
+{
+  for (; *text != nullptr; ++text)
+    remove_comment(*text, comment_mark);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Тестирование.
+#include <cstring> // strcmp, strlen, memcpy
+
+// Вспомогательные функции.
+
+/// Сравнение текстов на равенство.
+bool are_equal(const char * const text1[], const char * const text2[])
+{
+  for (; *text1 && *text2; ++text1, ++text2)
+  {
+    // Сравнение си-строк на равенство с помощью стандартной функции.
+    if (std::strcmp(*text1, *text2) != 0)
+      return false;
+  }
+  
+  // Оба указателя должны быть нулевыми, если тексты совпадают.
+  return *text1 == *text2;
+}
+
+
+/// Определить количество строк в тексте.
+std::size_t lines_in_text(const char * const source[])
+{
+  std::size_t source_size = 0;
+  for (auto p = source; *p != nullptr; ++p)
+    ++source_size;
+  return source_size;
+}
+
+/// Вспомогательная функция для создания копии текста.
+/// Она нужна для того, чтобы не изменять значения, заданные строковыми литералами (что чревато неопределённым поведением).
+char** copy_text(const char * const source[])
+{
+  // Создать массив строк.
+  const auto source_size = lines_in_text(source);
+  auto copy = new char*[source_size + 1];
+  // Скопировать массив построчно.
+  for (size_t i = 0; i < source_size; ++i)
+  {
+    // Выделить память для новой строки.
+    const auto line_len = std::strlen(source[i]) + 1;
+    copy[i] = new char[line_len];
+    // Скопировать строку (вместе с завершающим нулём).
+    std::memcpy(copy[i], source[i], line_len);
+  }
+
+  // Записать завершающий нуль.
+  copy[source_size] = nullptr;
+  // Вернуть результат.
+  return copy;
+}
+
+/// Освобождение памяти, занятой текстом, созданным с помощью функции copy_text.
+void free_text(char *text[])
+{
+  for (auto p = text; *p != nullptr; ++p)
+    delete[] *p;
+  delete[] text;
+}
+
+// Собственно тестирование.
+
+/// Тест функции remove_comments.
+bool test_remove_comments()
+{
+  // Исходный текст.
+  const char *input[] =
+  {
+    "",
+    "# comment",
+    "something; # comment",
+    "'hello, world!'",
+    "'# not a comment but it's OK to cut here too'... # a real comment",
+    nullptr
+  };
+
+  // Текст результата, который должен получиться.
+  const char *reference[] =
+  {
+    "",
+    "",
+    "something; ",
+    "'hello, world!'",
+    "'",
+    nullptr
+  };
+
+  auto text = copy_text(input);
+  remove_comments(text, '#');
+
+  const auto result = are_equal(text, reference);
+  free_text(text);
+  return result;
+}
+
+#include <iostream>
+int main()
+{
+  std::cout << test_remove_comments();
+  return EXIT_SUCCESS;
+}
